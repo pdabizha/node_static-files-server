@@ -11,6 +11,8 @@ function createServer() {
   // Return instance of http.Server class
   const server = http.createServer(async (req, res) => {
     const normalizedURL = new url.URL(req.url, `http://${req.headers.host}`);
+    const normalizedPath =
+      normalizedURL.pathname.replace(/^\/file\//, '') || 'index.html';
 
     if (!normalizedURL.pathname.startsWith('/file')) {
       res.statusCode = 400;
@@ -33,9 +35,6 @@ function createServer() {
         'Path must start with /file/. Example: /file/yourfilename.txt',
       );
     }
-
-    const normalizedPath =
-      normalizedURL.pathname.replace(/^\/file\//, '') || 'index.html';
 
     try {
       const file = await fsp.readFile(`./public/${normalizedPath}`, 'utf-8');
