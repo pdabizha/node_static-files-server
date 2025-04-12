@@ -2,49 +2,30 @@
 'use strict';
 
 const http = require('http');
-const fs = require('fs');
+const fsp = require('fs/promises');
 const url = require('url');
 // const path = require('path');
 
 function createServer() {
   /* Write your code here */
   // Return instance of http.Server class
-  const server = http.createServer((req, res) => {
-    const rawUrl = decodeURIComponent(req.url);
+  const server = http.createServer(async (req, res) => {
+    const normalizedURL = new url.URL(req.url, `http://${req.headers.host}`);
 
-    console.log('Raw request URL:', rawUrl);
+    if (!normalizedURL.pathname.startsWith('/file')) {
+      res.statusCode = 400;
+      res.setHeader('Content-Type', 'text/plain');
 
-    const passUrl = req.url;
+      return res.end('No access');
+    }
 
-    console.log('Request URL:', passUrl);
-
-    if (passUrl.includes('//')) {
+    if (normalizedURL.pathname.includes('//')) {
       res.statusCode = 404;
 
       return res.end();
     }
 
-    const normalizedURL = new url.URL(req.url, `http://${req.headers.host}`);
-
-    if (normalizedURL.pathname.includes('..')) {
-      console.log('..');
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'text/plain');
-
-      return res.end('No access');
-    }
-
-    const fileName =
-      normalizedURL.pathname.replace(/^\/file\//, '') || 'index.html';
-
-    if (!passUrl.startsWith('/file/') && fs.existsSync(normalizedURL)) {
-      res.statusCode = 400;
-      res.setHeader('Content-Type', 'text/plain');
-
-      return res.end('No access');
-    }
-
-    if (!passUrl.startsWith('/file/')) {
+    if (!normalizedURL.pathname.startsWith('/file/')) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'text/plain');
 
@@ -53,8 +34,11 @@ function createServer() {
       );
     }
 
+    const normalizedPath =
+      normalizedURL.pathname.replace(/^\/file\//, '') || 'index.html';
+
     try {
-      const file = fs.readFileSync(`./public/${fileName}`, 'utf-8');
+      const file = await fsp.readFile(`./public/${normalizedPath}`, 'utf-8');
 
       res.statusCode = 200;
       res.setHeader('Content-Type', 'text/plain');
